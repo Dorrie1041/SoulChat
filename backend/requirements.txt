@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+sqlalchemy-cockroachdb
+psycopg[binary]
+python-dotenv
+openai

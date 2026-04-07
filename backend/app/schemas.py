@@ -1,0 +1,9 @@
+## This is for API request/response data
+
+from pydantic import BaseModel
+
+class ChatRequest(BaseModel):
+    message: str
+
+class ChatResponse(BaseModel):
+    reply: str
