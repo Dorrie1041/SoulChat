@@ -28,3 +28,5 @@ def db_test():
 @app.get("/chat")
 async def chat():
     return {"reply": "Hello from FastAPI"}
+
+
