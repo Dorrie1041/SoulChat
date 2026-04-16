@@ -6,3 +6,6 @@ psycopg[binary]
 python-dotenv
 openai
 passlib[bcrypt]
+PyJWT
+pwdlib[argon2]
+email-validator

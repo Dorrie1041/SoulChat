@@ -2,40 +2,34 @@
 from typing import Optional
 from uuid import UUID
 from pydantic import BaseModel, EmailStr
-from pydantic import BaseModel
 
-
-class ChatRequest(BaseModel):
-    user_id: UUID
-    character_id: UUID
-    message: str
-    conversation_id: Optional[UUID] = None
-
-class ChatResponse(BaseModel):
-    reply: str
-    conversation_id: str
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-class LoginResponse(BaseModel):
-    user_id: str
-    username: str
-    email: EmailStr
 
 class RegisterRequest(BaseModel):
     username: str
     email: EmailStr
     password: str
 
+
 class RegisterResponse(BaseModel):
     user_id: str
     username: str
     email: str
 
+
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str
+    user_id: str
+    username: str
+    email: str
+
+
 class CharacterCreateRequest(BaseModel):
-    creator_user_id: UUID
     character_name: str
     character_personality: Optional[str] = None
     character_intro: Optional[str] = None
@@ -45,7 +39,19 @@ class CharacterCreateRequest(BaseModel):
     character_image_id: Optional[UUID] = None
     is_public: bool = False
 
+
 class CharacterCreateResponse(BaseModel):
     character_id: str
     character_name: str
     creator_user_id: str
+
+
+class ChatRequest(BaseModel):
+    character_id: UUID
+    message: str
+    conversation_id: Optional[UUID] = None
+
+
+class ChatResponse(BaseModel):
+    reply: str
+    conversation_id: str

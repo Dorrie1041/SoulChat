@@ -1,20 +1,23 @@
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException
-from pwdlib import PasswordHash
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+from pwdlib import PasswordHash
 
 from app.db import get_db
-from app.schemas import(
+from app.schemas import (
     RegisterRequest,
     RegisterResponse,
     LoginRequest,
-    LoginResponse
+    LoginResponse,
 )
+from app.security import create_access_token
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-pwd_context = PasswordHash.recommended()
+
+password_hasher = PasswordHash.recommended()
+
 
 @router.post("/register", response_model=RegisterResponse)
 def register(req: RegisterRequest, db: Session = Depends(get_db)):
@@ -22,22 +25,21 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
         text("""
             SELECT user_id
             FROM users
-            WHERE email = :email 
-            LIMIT 1 
+            WHERE email = :email
+            LIMIT 1
         """),
-        {"email": req.email}
+        {"email": req.email},
     ).fetchone()
 
     if existing:
         raise HTTPException(status_code=400, detail="Email already exists")
-    
+
     user_id = str(uuid4())
-    password_hash = pwd_context.hash(req.password)
+    hashed_password = password_hasher.hash(req.password)
 
     db.execute(
-        text(
-            """
-            INSERT INTO users(
+        text("""
+            INSERT INTO users (
                 user_id,
                 username,
                 email,
@@ -57,43 +59,48 @@ def register(req: RegisterRequest, db: Session = Depends(get_db)):
                 NOW(),
                 NOW()
             )
-            """),
-            {
-                "user_id": user_id,
-                "username": req.username,
-                "email": req.email,
-                "password_hash": password_hash,
-            },
+        """),
+        {
+            "user_id": user_id,
+            "username": req.username,
+            "email": req.email,
+            "password_hash": hashed_password,
+        },
     )
     db.commit()
 
     return RegisterResponse(
         user_id=user_id,
         username=req.username,
-        email=req.email
+        email=req.email,
     )
 
+
 @router.post("/login", response_model=LoginResponse)
-def login(req:LoginRequest, db: Session = Depends(get_db)):
+def login(req: LoginRequest, db: Session = Depends(get_db)):
     row = db.execute(
         text("""
             SELECT user_id, username, email, password_hash
             FROM users
             WHERE email = :email
-            LIMIT 1   
-            """),
-            {"email": req.email},
+            LIMIT 1
+        """),
+        {"email": req.email},
     ).fetchone()
 
     if not row:
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
-    user_id, username, email, password_hash = row
 
-    if not password_hash or not pwd_context.verify(req.password, password_hash):
+    user_id, username, email, stored_hash = row
+
+    if not stored_hash or not password_hasher.verify(req.password, stored_hash):
         raise HTTPException(status_code=401, detail="Invalid email or password")
-    
+
+    access_token = create_access_token(str(user_id))
+
     return LoginResponse(
+        access_token=access_token,
+        token_type="bearer",
         user_id=str(user_id),
         username=username,
         email=email,

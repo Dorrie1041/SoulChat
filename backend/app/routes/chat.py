@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.schemas import ChatRequest, ChatResponse
 from app.config import OPENAI_API_KEY
 from app.db import get_db
+from app.security import get_current_user
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -310,19 +311,23 @@ def build_system_prompt(character: dict, memory_block: str, relationship_block: 
 
 
 @router.post("", response_model=ChatResponse)
-def chat(req: ChatRequest, db: Session = Depends(get_db)):
+def chat(
+    req: ChatRequest, 
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user)):
     try:
+        user_id = current_user["user_id"]
         conversation_id: Optional[str] = req.conversation_id
 
         if conversation_id is None:
             conversation_id = get_or_create_conversation(
                 db=db,
-                user_id=str(req.user_id),
+                user_id=str(user_id),
                 character_id=str(req.character_id)
             )
         character = get_character(db, str(req.character_id))
-        memory_block = get_memory_block(db, str(req.user_id), str(req.character_id))
-        relationship_block = get_relationship_block(db, str(req.user_id), str(req.character_id))
+        memory_block = get_memory_block(db, str(user_id), str(req.character_id))
+        relationship_block = get_relationship_block(db, str(user_id), str(req.character_id))
         history_messages = get_recent_messages(db, conversation_id, limit=12)
 
         save_message(
