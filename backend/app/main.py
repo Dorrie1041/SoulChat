@@ -5,12 +5,14 @@ from app.db import engine, SessionLocal
 from app.routes.chat import router as chat_router
 from app.routes.auth import router as auth_router
 from app.routes.characters import router as character_router
+from app.routes.conversations import router as conversations_router
 
 
 app = FastAPI(title="SoulChat Backend")
 app.include_router(chat_router)
 app.include_router(auth_router)
 app.include_router(character_router)
+app.include_router(conversations_router)
 
 @app.get("/")
 async def root():

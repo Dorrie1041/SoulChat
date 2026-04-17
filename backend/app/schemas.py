@@ -57,3 +57,36 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     reply: str
     conversation_id: str
+
+class CharacterItemResponse(BaseModel):
+    character_id: str
+    character_name: str
+    character_personality: Optional[str] = None
+    character_intro: Optional[str] = None
+    character_call_user: Optional[str] = None
+    chat_style: Optional[str] = None
+    hidden_story: Optional[str] = None
+    opening_remark: Optional[str] = None
+    character_image_id: Optional[str] = None
+    is_public: bool
+    creator_user_id: str
+
+class CharacterDetailResponse(BaseModel):
+    character_id: str
+    character_name: str
+    character_personality: Optional[str] = None
+    character_intro: Optional[str] = None
+    character_call_user: Optional[str] = None
+    chat_style: Optional[str] = None
+    hidden_story: Optional[str] = None
+    opening_remark: Optional[str] = None
+    character_image_id: Optional[str] = None
+    is_public: bool
+    creator_user_id: str
+
+class ConversationItemResponse(BaseModel):
+    conversation_id: str
+    character_id: str
+    character_name: str
+    last_message: Optional[str] = None
+    last_message_at: Optional[str] = None
