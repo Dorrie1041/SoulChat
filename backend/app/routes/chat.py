@@ -55,7 +55,7 @@ def get_or_create_conversation(
         db: Session,
         user_id: str,
         character_id: str,
-) -> str:
+) -> tuple[str, bool]:
     existing = db.execute(
         text("""
             SELECT conversation_id
@@ -68,8 +68,9 @@ def get_or_create_conversation(
     ).fetchone()
 
     if existing:
-        return str(existing[0])
+        return str(existing[0]), False
     conversation_id = str(uuid4())
+
     db.execute(
         text("""
             INSERT INTO conversations (
@@ -100,7 +101,7 @@ def get_or_create_conversation(
         },
     )
     db.commit()
-    return conversation_id
+    return conversation_id, True
 
 def get_character(db:Session, character_id: str):
     row = db.execute(
@@ -111,9 +112,10 @@ def get_character(db:Session, character_id: str):
                    character_intro,
                    character_call_user,
                    chat_style,
-                   hidden_story
+                   hidden_story,
+                   opening_remark 
              FROM characters
-             WHERE character_id := character_id      
+             WHERE character_id = :character_id      
         """),
         {"character_id": character_id},
     ).fetchone()
@@ -129,6 +131,7 @@ def get_character(db:Session, character_id: str):
         "character_call_user": row[4] or "",
         "chat_style": row[5] or "",
         "hidden_story": row[6] or "",
+        "opening_remark": row[7] or "",
     }
 
 ## Get most top 12 messages
@@ -141,7 +144,7 @@ def get_recent_messages(
         text("""
             SELECT sender_type, message_text, created_at
             FROM messages
-            WHERE conversation_id =: conversation_id
+            WHERE conversation_id = :conversation_id
             ORDER BY created_at DESC
             LIMIT :limit    
         """),
@@ -205,7 +208,7 @@ def get_relationship_block(
             SELECT closeness_level, trust_level, affection_level, interaction_count
             FROM relationship_state
             WHERE user_id = :user_id
-            AND character_id =: character_id,
+            AND character_id = :character_id
             LIMIT 1    
         """),
         {"user_id": user_id, "character_id": character_id}
@@ -317,15 +320,25 @@ def chat(
     current_user: dict = Depends(get_current_user)):
     try:
         user_id = current_user["user_id"]
-        conversation_id: Optional[str] = req.conversation_id
+        conversation_id = str(req.conversation_id) if req.conversation_id else None
 
+        created_new = False
         if conversation_id is None:
-            conversation_id = get_or_create_conversation(
+            conversation_id, created_new = get_or_create_conversation(
                 db=db,
                 user_id=str(user_id),
                 character_id=str(req.character_id)
             )
         character = get_character(db, str(req.character_id))
+
+        if created_new and character["opening_remark"]:
+            save_message(
+                db=db,
+                conversation_id=conversation_id,
+                sender_type="assistant",
+                message_text=character["opening_remark"],
+            )
+
         memory_block = get_memory_block(db, str(user_id), str(req.character_id))
         relationship_block = get_relationship_block(db, str(user_id), str(req.character_id))
         history_messages = get_recent_messages(db, conversation_id, limit=12)
@@ -368,7 +381,7 @@ def chat(
             message_text=reply,
         )
 
-        return ChatRequest(
+        return ChatResponse(
             reply=reply,
             conversation_id=conversation_id,
         )

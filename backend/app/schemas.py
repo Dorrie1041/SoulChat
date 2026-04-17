@@ -38,12 +38,14 @@ class CharacterCreateRequest(BaseModel):
     hidden_story: Optional[str] = None
     character_image_id: Optional[UUID] = None
     is_public: bool = False
+    opening_remark: Optional[str] = None
 
 
 class CharacterCreateResponse(BaseModel):
     character_id: str
     character_name: str
     creator_user_id: str
+    opening_remark: Optional[str] = None
 
 
 class ChatRequest(BaseModel):
