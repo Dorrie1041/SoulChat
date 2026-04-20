@@ -90,3 +90,19 @@ class ConversationItemResponse(BaseModel):
     character_name: str
     last_message: Optional[str] = None
     last_message_at: Optional[str] = None
+
+class MessageItemResponse(BaseModel):
+    message_id: str
+    conversation_id: str
+    sender_type: str
+    message_text: Optional[str] = None
+    message_type: str
+    created_at: Optional[str] = None
+
+class MeResponse(BaseModel):
+    user_id: str
+    username: Optional[str] = None
+    email: str
+    role: Optional[str] = None
+    persona_preference: Optional[str] = None
+    created_at: Optional[str] = None
