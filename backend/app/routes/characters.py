@@ -5,7 +5,12 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.schemas import CharacterCreateRequest, CharacterCreateResponse, CharacterItemResponse, CharacterDetailResponse
+from app.schemas import (
+    CharacterCreateRequest, 
+    CharacterCreateResponse, 
+    CharacterItemResponse, 
+    CharacterDetailResponse,
+    CharacterUpdateRequest)
 from app.security import get_current_user
 from typing import List
 
@@ -189,3 +194,128 @@ def get_character_detail(
         is_public=row[9],
         creator_user_id=str(row[10]),
     )
+
+@router.put("/{character_id}", response_model=CharacterUpdateRequest)
+def update_character(
+    character_id: str,
+    req: CharacterUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    existing = db.execute(
+        text("""
+            SELECT creator_user_id
+            FROM characters
+            WHERE character_id = :character_id
+            LIMIT 1   
+        """),
+        {"character_id": character_id},
+    ).fetchone()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="Character is not found")
+    
+    if str(existing[0]) != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Only the creator can update this character")
+    
+    db.execute(
+        text("""
+        UPDATE characters
+        SET
+             character_name = COALESCE(:character_name, character_name),
+             character_personality = COALESCE(:character_personality, character_personality),
+             character_intro = COALESCE(:character_intro, character_intro),
+             character_call_user = COALESCE(:character_call_user, character_call_user),
+             chat_style = COALESCE(:chat_style, chat_style),
+             hidden_story = COALESCE(:hidden_story, hidden_story),
+             opening_remark = COALESCE(:opening_remark, opening_remark),
+             character_image_id = COALESCE(:character_image_id, character_image_id),
+             is_public = COALESCE(:is_public, is_public),
+             updated_at = NOW()
+        WHERE character_id = :character_id  
+        """),
+        {
+            "character_id": character_id,
+            "character_name": req.character_name,
+            "character_personality": req.character_personality,
+            "character_intro": req.character_intro,
+            "character_call_user": req.character_call_user,
+            "chat_style": req.chat_style,
+            "hidden_story": req.hidden_story,
+            "opening_remark": req.opening_remark,
+            "character_image_id": str(req.character_image_id) if req.character_image_id else None,
+            "is_public": req.is_public,
+        },
+    )
+    db.commit()
+
+    row = db.execute(
+        text("""
+            SELECT
+                character_id,
+                character_name,
+                character_personality,
+                character_intro,
+                character_call_user,
+                chat_style,
+                hidden_story,
+                opening_remark,
+                character_image_id,
+                is_public,
+                creator_user_id
+            FROM characters
+            WHERE character_id = :character_id
+            LIMIT 1   
+        """),
+        {"character_id": character_id},
+    ).fetchone()
+
+    return CharacterDetailResponse(
+        character_id=str(row[0]),
+        character_name=row[1],
+        character_personality=row[2],
+        character_intro=row[3],
+        character_call_user=row[4],
+        chat_style=row[5],
+        hidden_story=row[6],
+        opening_remark=row[7],
+        character_image_id=str(row[8]) if row[8] else None,
+        is_public=row[9],
+        creator_user_id=str(row[10]),
+    )
+
+@router.delete("/{character_id}")
+def delete_character(
+    character_id: str,
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    existing = db.execute(
+        text("""
+            SELECT creator_user_id
+            FROM characters
+            WHERE character_id = :character_id
+            LIMIT 1   
+        """),
+        {"character_id": character_id},
+    ).fetchone()
+
+    if not existing:
+        raise HTTPException(status_code=404, detail="The Character is not found")
+    if str(existing[0]) != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Only the creator can delete this character")
+    
+    db.execute(
+        text("""
+            DELETE FROM characters
+            WHERE character_id = :character_id 
+        """),
+        {"character_id": character_id},
+    )
+
+    db.commit()
+
+    return {
+        "message": "Character deleted successfully",
+        "character_id": character_id,
+    }

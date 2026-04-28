@@ -42,8 +42,4 @@ def which_db():
     finally:
         db.close()
 
-@app.get("/chat")
-async def chat():
-    return {"reply": "Hello from FastAPI"}
-
 

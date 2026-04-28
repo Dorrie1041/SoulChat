@@ -4,7 +4,9 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.schemas import ConversationItemResponse, MessageItemResponse
+from app.schemas import (
+    ConversationItemResponse, 
+    MessageItemResponse)
 from app.security import get_current_user
 
 router = APIRouter(prefix="/conversations", tags=["conversations"])

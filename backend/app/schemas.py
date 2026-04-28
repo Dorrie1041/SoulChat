@@ -84,6 +84,17 @@ class CharacterDetailResponse(BaseModel):
     is_public: bool
     creator_user_id: str
 
+class CharacterUpdateRequest(BaseModel):
+    character_name: str
+    character_personality: Optional[str] = None
+    character_intro: Optional[str] = None
+    character_call_user: Optional[str] = None
+    chat_style: Optional[str] = None
+    hidden_story: Optional[str] = None
+    opening_remark: Optional[str] = None
+    character_image_id: Optional[str] = None
+    is_public: bool
+
 class ConversationItemResponse(BaseModel):
     conversation_id: str
     character_id: str
@@ -106,3 +117,7 @@ class MeResponse(BaseModel):
     role: Optional[str] = None
     persona_preference: Optional[str] = None
     created_at: Optional[str] = None
+
+class MeUpdateRequest(BaseModel):
+    username: Optional[str] = None
+    persona_preference: Optional[str] = None
