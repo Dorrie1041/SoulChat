@@ -106,21 +106,23 @@ def list_characters(
     rows = db.execute(
         text("""
             SELECT 
-                character_id,
-                character_name,
-                character_personality,
-                character_intro,
-                character_call_user,
-                chat_style,
-                hidden_story,
-                opening_remark,
-                character_image_id,
-                is_public,
-                creator_user_id
-             FROM characters
-             WHERE creator_user_id = :user_id 
-             OR is_public = TRUE
-             ORDER BY created_at DESC
+                c.character_id,
+                c.character_name,
+                c.character_personality,
+                c.character_intro,
+                c.character_call_user,
+                c.chat_style,
+                c.hidden_story,
+                c.opening_remark,
+                c.character_image_id,
+                c.is_public,
+                c.creator_user_id,
+                i.public_url
+             FROM characters c
+             LEFT JOIN images i ON c.character_image_id = i.image_id
+             WHERE c.creator_user_id = :user_id 
+             OR c.is_public = TRUE
+             ORDER BY c.created_at DESC
         """),
         {"user_id": current_user["user_id"]},
     ).fetchall()
@@ -138,6 +140,7 @@ def list_characters(
                 hidden_story=row[6],
                 opening_remark=row[7],
                 character_image_id=str(row[8]) if row[8] else None,
+                character_image_url=row[11],
                 is_public=row[9],
                 creator_user_id=str(row[10]),
             )
@@ -154,19 +157,21 @@ def get_character_detail(
     row = db.execute(
         text("""
             SELECT
-                character_id,
-                character_name,
-                character_personality,
-                character_intro,
-                character_call_user,
-                chat_style,
-                hidden_story,
-                opening_remark,
-                character_image_id,
-                is_public,
-                creator_user_id
-            FROM characters
-            WHERE character_id = :character_id
+                c.character_id,
+                c.character_name,
+                c.character_personality,
+                c.character_intro,
+                c.character_call_user,
+                c.chat_style,
+                c.hidden_story,
+                c.opening_remark,
+                c.character_image_id,
+                c.is_public,
+                c.creator_user_id,
+                i.public_url
+            FROM characters c
+            LEFT JOIN images i ON c.character_image_id = i.image_id
+            WHERE c.character_id = :character_id
             LIMIT 1   
         """),
         {"character_id": character_id},
@@ -191,6 +196,7 @@ def get_character_detail(
         hidden_story=row[6],
         opening_remark=row[7],
         character_image_id=str(row[8]) if row[8] else None,
+        character_image_url=row[11],
         is_public=row[9],
         creator_user_id=str(row[10]),
     )
@@ -252,19 +258,21 @@ def update_character(
     row = db.execute(
         text("""
             SELECT
-                character_id,
-                character_name,
-                character_personality,
-                character_intro,
-                character_call_user,
-                chat_style,
-                hidden_story,
-                opening_remark,
-                character_image_id,
-                is_public,
-                creator_user_id
-            FROM characters
-            WHERE character_id = :character_id
+                c.character_id,
+                c.character_name,
+                c.character_personality,
+                c.character_intro,
+                c.character_call_user,
+                c.chat_style,
+                c.hidden_story,
+                c.opening_remark,
+                c.character_image_id,
+                c.is_public,
+                c.creator_user_id,
+                i.public_url
+            FROM characters c
+            LEFT JOIN images i ON c.character_image_id = i.image_id
+            WHERE c.character_id = :character_id
             LIMIT 1   
         """),
         {"character_id": character_id},
@@ -280,6 +288,7 @@ def update_character(
         hidden_story=row[6],
         opening_remark=row[7],
         character_image_id=str(row[8]) if row[8] else None,
+        character_image_url=row[11],
         is_public=row[9],
         creator_user_id=str(row[10]),
     )

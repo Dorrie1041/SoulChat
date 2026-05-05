@@ -68,6 +68,7 @@ class CharacterItemResponse(BaseModel):
     hidden_story: Optional[str] = None
     opening_remark: Optional[str] = None
     character_image_id: Optional[str] = None
+    character_image_url: Optional[str] = None
     is_public: bool
     creator_user_id: str
 
@@ -81,6 +82,7 @@ class CharacterDetailResponse(BaseModel):
     hidden_story: Optional[str] = None
     opening_remark: Optional[str] = None
     character_image_id: Optional[str] = None
+    character_image_url: Optional[str] = None
     is_public: bool
     creator_user_id: str
 
@@ -121,3 +123,26 @@ class MeResponse(BaseModel):
 class MeUpdateRequest(BaseModel):
     username: Optional[str] = None
     persona_preference: Optional[str] = None
+
+
+class ImageUploadResponse(BaseModel):
+    image_id: str
+    storage_path: str
+    public_url: Optional[str] = None
+    mime_type: Optional[str] = None
+    file_size: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    uploaded_by_user_id: str
+
+
+class ImageItemResponse(BaseModel):
+    image_id: str
+    storage_path: str
+    public_url: Optional[str] = None
+    mime_type: Optional[str] = None
+    file_size: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
+    uploaded_by_user_id: str
+    created_at: str

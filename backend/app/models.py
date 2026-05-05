@@ -44,7 +44,7 @@ class Image(Base):
     width = Column(Integer)
     height = Column(Integer)
     uploaded_by_user_id = Column(String, ForeignKey("users.user_id"))
-    created_id = Column(TIMESTAMP, nullable=False, server_default=func.now())
+    created_at = Column(TIMESTAMP, nullable=False, server_default=func.now())
 
 class Conversation(Base):
     __tablename__ = "conversations"
