@@ -9,6 +9,11 @@ from app.security import get_current_user
 from app.models import Image
 from app.db import get_db
 from sqlalchemy.orm import Session
+from PIL import Image as PILImage
+from io import BytesIO
+from sqlalchemy import text
+
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5 MB
 
 router = APIRouter(prefix="/images", tags=["images"])
 
@@ -20,7 +25,7 @@ BUCKET_NAME = os.getenv("GCS_BUCKET_NAME", "soulchat-images")
 @router.post("/upload", response_model=ImageUploadResponse)
 async def upload_image(
     file: UploadFile = File(...),
-    current_user_id: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -44,11 +49,17 @@ async def upload_image(
         # Generate unique filename
         file_extension = os.path.splitext(file.filename)[1]
         unique_filename = f"{uuid.uuid4()}{file_extension}"
-        storage_path = f"images/{current_user_id}/{unique_filename}"
+        storage_path = f"images/{current_user['user_id']}/{unique_filename}"
         
         # Read file content
         file_content = await file.read()
         file_size = len(file_content)
+
+        if file_size > MAX_FILE_SIZE:
+            raise HTTPException(
+                status_code=400,
+                detail=f"File size exceeds the maximum limit of {MAX_FILE_SIZE / (1024 * 1024)} MB"
+            )
         
         # Get bucket and upload file
         bucket = storage_client.bucket(BUCKET_NAME)
@@ -59,13 +70,13 @@ async def upload_image(
         )
         
         # Make blob publicly accessible (optional, depending on your needs)
-        blob.make_public()
-        public_url = blob.public_url
+        # blob.make_public()
+        public_url = f"https://storage.googleapis.com/{BUCKET_NAME}/{storage_path}"
         
         # Here you could add image processing to get width and height
-        # For now, we'll set them as None or you could use PIL/Pillow
-        width = None
-        height = None
+        # PIL/Pillow
+        image = PILImage.open(BytesIO(file_content))
+        width, height = image.size
         
         image_id = str(uuid.uuid4())
         
@@ -78,12 +89,46 @@ async def upload_image(
             file_size=file_size,
             width=width,
             height=height,
-            uploaded_by_user_id=current_user_id
+            uploaded_by_user_id=current_user["user_id"]
         )
         
-        db.add(image_record)
+        db.execute(
+            text("""
+                INSERT INTO images (
+                    image_id,
+                    storage_path,
+                    public_url,
+                    mime_type,
+                    file_size,
+                    width,
+                    height,
+                    uploaded_by_user_id,
+                    created_at
+                )
+                VALUES (
+                    :image_id,
+                    :storage_path,
+                    :public_url,
+                    :mime_type,
+                    :file_size,
+                    :width,
+                    :height,
+                    :uploaded_by_user_id,
+                    NOW()
+                )
+            """),
+            {
+                "image_id": image_id,
+                "storage_path": storage_path,
+                "public_url": public_url,
+                "mime_type": file.content_type,
+                "file_size": file_size,
+                "width": width,
+                "height": height,
+                "uploaded_by_user_id": current_user["user_id"],
+            },
+        )
         db.commit()
-        db.refresh(image_record)
         
         response = ImageUploadResponse(
             image_id=image_id,
@@ -93,7 +138,7 @@ async def upload_image(
             file_size=file_size,
             width=width,
             height=height,
-            uploaded_by_user_id=current_user_id
+            uploaded_by_user_id=current_user["user_id"]
         )
         
         return response
@@ -101,6 +146,7 @@ async def upload_image(
     except HTTPException:
         raise
     except Exception as e:
+        db.rollback()
         raise HTTPException(
             status_code=500,
             detail=f"Failed to upload image: {str(e)}"
@@ -160,7 +206,7 @@ async def get_image(
 @router.delete("/{image_id}")
 async def delete_image(
     image_id: str,
-    current_user_id: str = Depends(get_current_user),
+    current_user: dict = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     """
@@ -187,7 +233,7 @@ async def delete_image(
             )
         
         # Check if user owns the image
-        if image.uploaded_by_user_id != current_user_id:
+        if image.uploaded_by_user_id != current_user["user_id"]:
             raise HTTPException(
                 status_code=403,
                 detail="You don't have permission to delete this image"
