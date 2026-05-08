@@ -60,7 +60,7 @@ def get_or_create_conversation(
         text("""
             SELECT conversation_id
             FROM conversations
-            WHERE user_id =:user_id AND character_id =:character_id
+            WHERE user_id = :user_id AND character_id = :character_id
             ORDER BY updated_at DESC
             LIMIT 1  
         """),

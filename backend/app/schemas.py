@@ -112,6 +112,15 @@ class MessageItemResponse(BaseModel):
     message_type: str
     created_at: Optional[str] = None
 
+class MessageRegenerateRequest(BaseModel):
+    new_message: str
+
+class MessageRegenerateResponse(BaseModel):
+    reply: str
+    conversation_id: str
+    user_message_id: str
+    assistant_message_id: str
+
 class MeResponse(BaseModel):
     user_id: str
     username: Optional[str] = None
