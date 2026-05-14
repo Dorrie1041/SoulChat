@@ -1,5 +1,5 @@
 ## This is for API request/response data
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, EmailStr
 
@@ -155,3 +155,11 @@ class ImageItemResponse(BaseModel):
     height: Optional[int] = None
     uploaded_by_user_id: str
     created_at: str
+
+class SuggestedRepliesResponse(BaseModel):
+    suggestions: List[str]
+
+class ContinueCharacterResponse(BaseModel):
+    reply: str
+    conversation_id: str
+    assistant_message_id: str
