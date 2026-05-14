@@ -4,6 +4,7 @@ from sqlalchemy import text
 
 from app.db import get_db
 from app.security import get_current_user
+from app.routes.chat import update_relationship_state
 
 from app.routes.chat import (
     client,
@@ -185,6 +186,12 @@ def regenerate_from_message(
             conversation_id=conversation_id,
             sender_type="assistant",
             message_text=reply,
+        )
+
+        update_relationship_state(
+            db=db,
+            user_id=user_id,
+            character_id=character_id,
         )
 
         return MessageRegenerateResponse(
