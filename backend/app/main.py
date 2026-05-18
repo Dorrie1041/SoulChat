@@ -23,10 +23,6 @@ app.include_router(messages_router)
 async def root():
     return {"message": "SoulChat backend is running"}
 
-@app.get("/health")
-async def health():
-    return {"status": "ok"}
-
 @app.get("/db-test")
 def db_test():
     db = SessionLocal()
