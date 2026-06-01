@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "http://10.0.0.58:8000";
 
 async function request<T>(
     path: string,

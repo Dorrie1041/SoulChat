@@ -9,6 +9,7 @@ from app.routes.conversations import router as conversations_router
 from app.routes.users import router as users_router
 from app.routes.images import router as images_router
 from app.routes.messages import router as messages_router
+from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="SoulChat Backend")
 app.include_router(chat_router)
@@ -18,6 +19,16 @@ app.include_router(conversations_router)
 app.include_router(users_router)
 app.include_router(images_router)
 app.include_router(messages_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:8081",
+        "http://127.0.0.1:8081",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():
