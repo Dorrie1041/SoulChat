@@ -152,161 +152,143 @@ async def upload_image(
             detail=f"Failed to upload image: {str(e)}"
         )
 
+@router.get("", response_model=list[ImageItemResponse])
+def get_all_images(
+    db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+):
+    rows = db.execute(
+        text("""
+            SELECT
+                image_id,
+                storage_path,
+                public_url,
+                mime_type,
+                file_size,
+                width,
+                height,
+                uploaded_by_user_id,
+                created_at
+            FROM images
+            WHERE uploaded_by_user_id = :user_id
+            ORDER BY created_at DESC
+        """),
+        {
+            "user_id": current_user["user_id"],
+        }
+    ).fetchall()
+
+    images = []
+
+    for row in rows:
+        images.append({
+            "image_id": row[0],
+            "storage_path": row[1],
+            "public_url": row[2],
+            "mime_type": row[3],
+            "file_size": row[4],
+            "width": row[5],
+            "height": row[6],
+            "uploaded_by_user_id": row[7],
+            "created_at": row[8] if row[8] else None
+        })
+    return images
 
 @router.get("/{image_id}", response_model=ImageItemResponse)
 async def get_image(
     image_id: str,
     db: Session = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
 ):
-    """
-    Get image details by image_id
-    
-    Args:
-        image_id: The ID of the image to retrieve
-        db: Database session
-        
-    Returns:
-        ImageItemResponse with image details including created_at
-        
-    Raises:
-        HTTPException: 404 if image not found
-    """
-    try:
-        image = db.query(Image).filter(Image.image_id == image_id).first()
-        
-        if not image:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Image with id {image_id} not found"
-            )
-        
-        response = ImageItemResponse(
-            image_id=image.image_id,
-            storage_path=image.storage_path,
-            public_url=image.public_url,
-            mime_type=image.mime_type,
-            file_size=image.file_size,
-            width=image.width,
-            height=image.height,
-            uploaded_by_user_id=image.uploaded_by_user_id,
-            created_at=image.created_at.isoformat() if image.created_at else None
-        )
-        
-        return response
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve image: {str(e)}"
-        )
+    row = db.execute(
+        text("""
+            SELECT
+                image_id,
+                storage_path,
+                public_url,
+                mime_type,
+                file_size,
+                width,
+                height,
+                uploaded_by_user_id,
+                created_at
+            FROM images
+            WHERE image_id = :image_id
+            LIMIT 1 
+        """),
+        {
+            "image_id": image_id,
+        }
+    ).fetchone()
 
+    if not row:
+        raise HTTPException(status_code=404, detail="Image not found")
+    
+    if str(row[7]) != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to access this image")
+    
+    return ImageItemResponse(
+        image_id=row[0],
+        storage_path=row[1],
+        public_url=row[2],
+        mime_type=row[3],
+        file_size=row[4],
+        width=row[5],
+        height=row[6],
+        uploaded_by_user_id=row[7] if row[7] else None,
+        created_at=row[8] if row[8] else None
+    )
 
 @router.delete("/{image_id}")
 async def delete_image(
     image_id: str,
+    db: Session = Depends(get_db),
     current_user: dict = Depends(get_current_user),
-    db: Session = Depends(get_db),
 ):
-    """
-    Delete a specific image by image_id
-    
-    Args:
-        image_id: The ID of the image to delete
-        current_user_id: ID of the user requesting deletion
-        db: Database session
-        
-    Returns:
-        Message confirming deletion
-        
-    Raises:
-        HTTPException: 404 if image not found, 403 if user doesn't own the image
-    """
-    try:
-        image = db.query(Image).filter(Image.image_id == image_id).first()
-        
-        if not image:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Image with id {image_id} not found"
-            )
-        
-        # Check if user owns the image
-        if image.uploaded_by_user_id != current_user["user_id"]:
-            raise HTTPException(
-                status_code=403,
-                detail="You don't have permission to delete this image"
-            )
-        
-        # Delete from Google Cloud Storage
-        try:
-            bucket = storage_client.bucket(BUCKET_NAME)
-            blob = bucket.blob(image.storage_path)
-            blob.delete()
-        except Exception as gcs_error:
-            # Log the error but don't fail the delete operation
-            print(f"Warning: Failed to delete GCS blob {image.storage_path}: {str(gcs_error)}")
-        
-        # Delete from database
-        db.delete(image)
-        db.commit()
-        
-        return {
-            "message": f"Image {image_id} deleted successfully",
-            "image_id": image_id
+    row = db.execute(
+        text("""
+            SELECT
+                storage_path,
+                uploaded_by_user_id
+            FROM images
+            WHERE image_id = :image_id
+            LIMIT 1
+        """),
+        {
+            "image_id": image_id,
         }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to delete image: {str(e)}"
-        )
+    ).fetchone()
 
-
-@router.get("", response_model=list[ImageItemResponse])
-async def get_all_images(
-    skip: int = 0,
-    limit: int = 10,
-    db: Session = Depends(get_db),
-):
-    """
-    Get all images with pagination
+    if not row:
+        raise HTTPException(status_code=404, detail="Image not found")
     
-    Args:
-        skip: Number of images to skip (default: 0)
-        limit: Maximum number of images to return (default: 10)
-        db: Database session
-        
-    Returns:
-        List of ImageItemResponse objects
-    """
+    storage_path, uploaded_by_user_id = row[0], str(row[1])
+
+    if uploaded_by_user_id != current_user["user_id"]:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this image")
+    
     try:
-        images = db.query(Image).offset(skip).limit(limit).all()
-        
-        response = []
-        for image in images:
-            response.append(
-                ImageItemResponse(
-                    image_id=image.image_id,
-                    storage_path=image.storage_path,
-                    public_url=image.public_url,
-                    mime_type=image.mime_type,
-                    file_size=image.file_size,
-                    width=image.width,
-                    height=image.height,
-                    uploaded_by_user_id=image.uploaded_by_user_id,
-                    created_at=image.created_at.isoformat() if image.created_at else None
-                )
-            )
-        
-        return response
-        
+        bucket = storage_client.bucket(BUCKET_NAME)
+        blob = bucket.blob(storage_path)
+        blob.delete()
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Failed to retrieve images: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to delete image from storage: {str(e)}")
+    
+    db.execute(
+        text("""
+            DELETE FROM images
+            WHERE image_id = :image_id
+        """),
+        {
+            "image_id": image_id,
+        }
+    )
+    db.commit()
+
+    return {
+        "message": "Image deleted successfully",
+        "image_id": image_id,
+    }
+
+    
 
