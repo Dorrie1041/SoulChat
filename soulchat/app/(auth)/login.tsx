@@ -42,7 +42,7 @@ export default function LoginScreen() {
 
             <TextInput
                 style={authStyles.input}
-                placeholder="Email"
+                placeholder="邮箱"
                 value={email}
                 onChangeText={setEmail}
                 autoCapitalize="none"
@@ -50,7 +50,7 @@ export default function LoginScreen() {
 
             <TextInput
                 style={authStyles.input}
-                placeholder="Password"
+                placeholder="密码"
                 value={password}
                 onChangeText={setPassword}
                 secureTextEntry
